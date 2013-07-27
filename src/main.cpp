@@ -8,27 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "main.h"
+#include "Util.h"
 #include "AfraidDns.h"
 
 using namespace std;
-
-//-----------------------------------------------------------------------------
-
-void Log(int pri, string msg, bool terminate)
-{
-	if(terminate)
-	{
-		msg += ", terminating.";
-	}
-
-	syslog(pri, "%s", msg.c_str());
-
-	if(terminate)
-	{
-		exit(1);
-	}
-}
 
 //-----------------------------------------------------------------------------
 

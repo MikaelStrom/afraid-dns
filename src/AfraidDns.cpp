@@ -11,7 +11,7 @@
 #include <sstream>
 #include <algorithm>
 
-#include "main.h"
+#include "Util.h"
 #include "GetMyIP.h"
 #include "AfraidDns.h"
 
@@ -24,10 +24,8 @@
 AfraidDns::AfraidDns(const string username, const string password, const string hostname)
 :	m_afraid_host(HOSTNAME),
 	m_dns_host(hostname),
-	myIp("get-site-ip.com", "Your ip is")
+	m_get_ip("get-site-ip.com", "Your ip is")
 {
-	// create SHA
-
 	CalcSHA1(username + "|" + password);
 }
 
@@ -46,17 +44,17 @@ void AfraidDns::CalcSHA1(const string s)
 
     if(! SHA1_Init(&context))
     {
-    	Log(LOG_CRIT, "SHA1_Init() failed", true);
+    	Util::Log(LOG_CRIT, "SHA1_Init() failed", true);
     }
 
     if(! SHA1_Update(&context, (unsigned char*)s.c_str(), s.length()))
     {
-    	Log(LOG_CRIT, "SHA1_Update() failed", true);
+    	Util::Log(LOG_CRIT, "SHA1_Update() failed", true);
     }
 
     if(! SHA1_Final(out, &context))
     {
-    	Log(LOG_CRIT, "SHA1_Final() failed", true);
+    	Util::Log(LOG_CRIT, "SHA1_Final() failed", true);
     }
 
     for(int i = 0; i < SHA_DIGEST_LENGTH; i++)
@@ -65,22 +63,6 @@ void AfraidDns::CalcSHA1(const string s)
 		sprintf(buf, "%02x", out[i]);
 		m_sha_digest += buf;
 	}
-}
-
-//-----------------------------------------------------------------------------
-
-vector<string> AfraidDns::Tokenize(const string& text, const char delim)
-{
-	string s;
-	stringstream ss(text);
-	vector<string> result;
-
-	while(getline(ss, s, delim))
-	{
-		result.push_back(s);
-	}
-
-	return result;
 }
 
 //-----------------------------------------------------------------------------
@@ -94,7 +76,7 @@ bool AfraidDns::CreateApiKey(const string hostname, const vector<string> text, s
 
 	for(unsigned i = 0; i < text.size(); ++i)
 	{
-		vector<std::string> tokens = Tokenize(text[i], '|');
+		vector<std::string> tokens = Util::Tokenize(text[i], '|');
 
 		if(tokens.size() == 3)
 		{
@@ -108,18 +90,18 @@ bool AfraidDns::CreateApiKey(const string hostname, const vector<string> text, s
 
 	if(key.length() == 0)
 	{
-    	Log(LOG_CRIT, "No api key found matching '" + hostname + "'", true);
+    	Util::Log(LOG_CRIT, "No api key found matching '" + hostname + "'", true);
 	}
 
-	// String has format: http://freedns.afraid.org/dynamic/update.php?UnlDelkwbkRBd2RyUHhiS2R1TFY6OTY4NTI3Mg==
-	// Discard leading "http://freedns.afraid.org"
+	// String has format: "http://freedns.afraid.org/dynamic/update.php?UnlDelkwbkRBd2RyUHhiS2R1TFY6OTY4NTI3Mg=="
+	// discard leading "http://freedns.afraid.org"
 
 	if(key.length() > 0)
 	{
 		size_t start = key.find("/dynamic/update.php?");
 		if (start == string::npos)
 		{
-	    	Log(LOG_CRIT, "Failed to parse api key. Key = '" + key + "'", true);
+	    	Util::Log(LOG_CRIT, "Failed to parse api key. Key = '" + key + "'", true);
 		}
 
 		api_key = key.substr(start);
@@ -154,15 +136,11 @@ bool AfraidDns::GetApiKeys()
 
 bool AfraidDns::UpdateIp()
 {
-	string my_ip;
-	bool changed;
+	string new_ip;
 
-	myIp.Get(my_ip, changed);
-
-	if(changed)
+	if(m_get_ip.Get(new_ip) && new_ip != m_last_ip)
 	{
-
-		// send
+		// update
 
 		vector<string> update_result;
 		string update_request = "GET ";

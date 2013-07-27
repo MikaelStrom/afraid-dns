@@ -19,8 +19,8 @@
 
 #include <sstream>
 
+#include "Util.h"
 #include "Connection.h"
-#include "main.h"
 
 #define INVALID	-1
 
@@ -52,7 +52,7 @@ bool Connection::Open()
 	hostinfo = gethostbyname(m_hostname.c_str());
 	if (hostinfo == NULL)
 	{
-		Log(LOG_CRIT, "Can't resolve hostname " + m_hostname + ": " + string(strerror(errno)));
+		Util::Log(LOG_CRIT, "Can't resolve hostname " + m_hostname + ": " + string(strerror(errno)));
 		return false;
 	}
 
@@ -64,7 +64,7 @@ bool Connection::Open()
 	// Connect to the web server
 	if(connect(m_fd, (const sockaddr*) &name, sizeof(struct sockaddr_in)) < 0)
 	{
-		Log(LOG_CRIT, string("connect() failed: ") + strerror(errno));
+		Util::Log(LOG_CRIT, string("connect() failed: ") + strerror(errno));
 		return false;
 	}
 
@@ -86,7 +86,10 @@ bool Connection::Request(const string& request, vector<string>& result)
 {
 	result.clear();
 	string temp;
-	string req = request + " HTTP/1.0\n\n";
+	string req = request + " HTTP/1.1\n";
+	req += "Host: ";
+	req += m_hostname;
+	req += "\n\n";
 
 	if(! Open())
 	{
@@ -95,7 +98,7 @@ bool Connection::Request(const string& request, vector<string>& result)
 
 	if(Write(req.c_str(), req.length()) < 0)
     {
-    	Log(LOG_CRIT, "write(socket_fd) failed");
+    	Util::Log(LOG_CRIT, "write(socket_fd) failed");
     	return false;
     }
 
@@ -111,7 +114,7 @@ bool Connection::Request(const string& request, vector<string>& result)
 
 		if(n_read < 0)
 	    {
-	    	Log(LOG_CRIT, "read(socket_fd) failed");
+	    	Util::Log(LOG_CRIT, "read(socket_fd) failed");
 	    	return false;
 	    }
 		else if(n_read == 0)

@@ -16,15 +16,15 @@ using namespace std;
 class GetMyIP
 {
 public:
-	GetMyIP(const string hostname, const string skipToString);
+	GetMyIP(const string hostname, const string skipToString = "");
 
-	bool Get(string& myIp, bool& changed);
+	bool Get(string& myIp);
 
 private:
+//	bool ExtractIp(const string src, string& dest);
 	string m_hostname;
 	Connection m_host;
 	string m_skip;
-	string m_last_ip;
 };
 
 #endif /* GETMYIP_H_ */

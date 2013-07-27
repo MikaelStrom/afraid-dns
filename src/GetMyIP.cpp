@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "main.h"
+#include "Util.h"
 #include "GetMyIP.h"
 
 //------------------------------------------------------------------------------
@@ -21,49 +21,31 @@ GetMyIP::GetMyIP(const string hostname, const string skipToString)
 
 //------------------------------------------------------------------------------
 
-bool GetMyIP::Get(string& myIp, bool& changed)
+bool GetMyIP::Get(string& myIp)
 {
 	string req = "GET /";
-	vector<string> result;
-	string new_ip;
+	vector<string> response;
 
-	changed = false;
-
-	if(m_host.Request(req, result))
+	if(m_host.Request(req, response))
 	{
-		for(unsigned i = 0; i <result.size(); ++i)
+		for(unsigned i = 0; i <response.size(); ++i)
 		{
-			string& line = result[i];
+			string& line = response[i];
 
 			size_t start = line.find(m_skip);
 			if(start != string::npos)
 			{
-				int a, b, c, d;
-				string ip_str = line.substr(start);
-
-				if(sscanf(ip_str.c_str(), "%d.%d.%d.%d", a, b, c, d) == 4)
+				if(Util::ExtractIp(line.substr(start + m_skip.length()), myIp))
 				{
-					char buf[32];
-					sprintf(buf, "%d.%d.%d.%d", a, b, c, d);
-					new_ip = buf;
-					break;
+					return true;
 				}
 			}
 		}
 	}
 
-	if(new_ip.length() > 0)
-	{
-		changed = new_ip != m_last_ip;
-		m_last_ip = new_ip;
-		myIp = new_ip;
-		return true;
-	}
-	else
-	{
-	   	Log(LOG_CRIT, "failed to get IP from " + m_hostname);
-	   	return false;
-	}
+	Util::Log(LOG_CRIT, "failed to get IP from " + m_hostname);
+
+	return false;
 }
 
 //------------------------------------------------------------------------------

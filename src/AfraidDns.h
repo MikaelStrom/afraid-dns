@@ -28,14 +28,14 @@ public:
 private:
 	void CalcSHA1(const string s);
 	bool CreateApiKey(const string hostname, const vector<string> text, string& api_key);
-	vector<string> Tokenize(const string& text, const char delim);
 
 	Connection m_afraid_host;
 	string m_sha_digest;
 	string m_dns_host;
 	string m_api_key;
 
-	GetMyIP myIp;
+	GetMyIP m_get_ip;
+	string m_last_ip;
 };
 
 #endif /* AFRAIDDNS_H_ */

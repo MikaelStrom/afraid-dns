@@ -19,9 +19,6 @@ using namespace std;
 class Util
 {
 public:
-	Util()				{};
-	virtual ~Util()		{};
-
 	static void Log(int pri, string msg, bool terminate = false);
 
 	static bool ExtractIp(const string src, string& dest);

@@ -21,12 +21,13 @@
 
 //-----------------------------------------------------------------------------
 
-AfraidDns::AfraidDns(const string username, const string password, const string hostname)
+AfraidDns::AfraidDns(const string username, const string password, const string hostname, const string ip_host, const string ip_skip)
 :	m_afraid_host(HOSTNAME),
 	m_dns_host(hostname),
-	m_get_ip("get-site-ip.com", "Your ip is")
+	m_get_ip(ip_host, ip_skip)
 {
 	CalcSHA1(username + "|" + password);
+	m_last_ip = "<unknown>";
 }
 
 //-----------------------------------------------------------------------------
@@ -44,17 +45,17 @@ void AfraidDns::CalcSHA1(const string s)
 
     if(! SHA1_Init(&context))
     {
-    	Util::Log(LOG_CRIT, "SHA1_Init() failed", true);
+    	Util::Log(LogError, "SHA1_Init() failed", "", true);
     }
 
     if(! SHA1_Update(&context, (unsigned char*)s.c_str(), s.length()))
     {
-    	Util::Log(LOG_CRIT, "SHA1_Update() failed", true);
+    	Util::Log(LogError, "SHA1_Update() failed", "", true);
     }
 
     if(! SHA1_Final(out, &context))
     {
-    	Util::Log(LOG_CRIT, "SHA1_Final() failed", true);
+    	Util::Log(LogError, "SHA1_Final() failed", "", true);
     }
 
     for(int i = 0; i < SHA_DIGEST_LENGTH; i++)
@@ -90,7 +91,7 @@ bool AfraidDns::CreateApiKey(const string hostname, const vector<string> text, s
 
 	if(key.length() == 0)
 	{
-    	Util::Log(LOG_CRIT, "No api key found matching '" + hostname + "'", true);
+    	Util::Log(LogError, "No api key found matching '" + hostname + "'", "", true);
 	}
 
 	// String has format: "http://freedns.afraid.org/dynamic/update.php?UnlDelkwbkRBd2RyUHhiS2R1TFY6OTY4NTI3Mg=="
@@ -101,7 +102,7 @@ bool AfraidDns::CreateApiKey(const string hostname, const vector<string> text, s
 		size_t start = key.find("/dynamic/update.php?");
 		if (start == string::npos)
 		{
-	    	Util::Log(LOG_CRIT, "Failed to parse api key. Key = '" + key + "'", true);
+	    	Util::Log(LogError, "Failed to parse api key. Key = '" + key + "'", "", true);
 		}
 
 		api_key = key.substr(start);
@@ -118,48 +119,121 @@ bool AfraidDns::GetApiKeys()
 {
 	// Retrieve api keys
 
-	vector<string> result;
+	vector<string> head;
+	vector<string> body;
 	string request = "GET /api/?action=getdyndns&sha=";
 	request += m_sha_digest;
 
-	if(! m_afraid_host.Request(request, result))
+	if(! m_afraid_host.Request(request, head, body))
 	{
 		return false;
 	}
 
 	// find our key
 
-	return CreateApiKey(m_dns_host, result, m_api_key);
+	return CreateApiKey(m_dns_host, body, m_api_key);
 }
 
 //-----------------------------------------------------------------------------
 
-bool AfraidDns::UpdateIp()
+bool AfraidDns::Update()
 {
 	string new_ip;
+	bool success;
+	string response_ip;
+	bool changed = false;
 
-	if(m_get_ip.Get(new_ip) && new_ip != m_last_ip)
+	if(! m_get_ip.Get(new_ip))
 	{
-		// update
+		Util::Log(LogError, "Unable to detect IP, forcing update");
 
-		vector<string> update_result;
-		string update_request = "GET ";
-		update_request += m_api_key;
+		success = UpdateIp(response_ip, changed);
+	}
+	else if(new_ip != m_last_ip)
+	{
+		Util::Log(LogInfo, "New IP detected, changing from " + m_last_ip + " to " + new_ip);
 
-		if(! m_afraid_host.Request(update_request, update_result))
+		success = UpdateIp(response_ip, changed);
+
+		if(success)
 		{
-			return false;
+			m_last_ip = new_ip;
+		}
+	}
+	else
+	{
+		success = true;
+	}
+
+	if(! success)
+	{
+		Util::Log(LogError, "Unable to update" + string(HOSTNAME));
+	}
+	else if(changed)
+	{
+		Util::Log(LogInfo, "Successfully updated IP to " + response_ip);
+	}
+	else
+	{
+		Util::Log(LogInfo, "IP not changed (" + new_ip + ")");
+	}
+
+	return success;
+}
+
+//-----------------------------------------------------------------------------
+
+bool AfraidDns::UpdateIp(string& response_ip, bool& changed)
+{
+	vector<string> head;
+	vector<string> body;
+	string update_request = "GET ";
+	update_request += m_api_key;
+
+	response_ip.clear();
+	changed = false;
+
+	if(! m_afraid_host.Request(update_request, head, body))
+	{
+		return false;
+	}
+
+	// On success the result, can be either
+	//   Updated mikestrom.linuxd.net to 112.209.21.79 in 0.576 seconds
+	// or
+	//   ERROR: Address 112.209.21.79 has not changed.
+
+	string result_ip;
+
+	for(unsigned i = 0; i < body.size(); ++i)
+	{
+		const string search_1 = "to";
+		const string search_2 = "ERROR: Address";
+
+		const string& line = body[i];
+
+		// try Updated... to ...
+
+		size_t s1 = line.find("Updated");
+		size_t s2 = line.find(search_1);
+		if(s1 != string::npos && s2 != string::npos)
+		{
+			Util::ExtractIp(line.substr(s2 + search_1.length()), response_ip);
+			changed = true;
+			break;
 		}
 
-		// parse result
+		// try Updated... to ...
 
-		for(unsigned i = 0; i < update_result.size(); ++i)
+		size_t s3 = line.find(search_2);
+		if(s3 != string::npos)
 		{
-			printf("%s\n", update_result[i].c_str());
+			Util::ExtractIp(line.substr(s3 + search_2.length()), response_ip);
+			break;
 		}
 	}
 
-	return true;
+	return response_ip.length() > 0;
 }
 
 //-----------------------------------------------------------------------------

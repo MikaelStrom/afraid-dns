@@ -10,6 +10,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/socket.h>
 
@@ -52,9 +53,11 @@ bool Connection::Open()
 	hostinfo = gethostbyname(m_hostname.c_str());
 	if (hostinfo == NULL)
 	{
-		Util::Log(LOG_CRIT, "Can't resolve hostname " + m_hostname + ": " + string(strerror(errno)));
+		Util::Log(LogError, "Can't resolve hostname " + m_hostname + ": " + string(strerror(errno)));
 		return false;
 	}
+
+	Util::Log(LogDebug, "Found host " + m_hostname + " at " + inet_ntoa(*((struct in_addr *)hostinfo->h_addr)));
 
 	struct sockaddr_in name;
 	name.sin_addr = *((struct in_addr *) hostinfo->h_addr);
@@ -64,7 +67,7 @@ bool Connection::Open()
 	// Connect to the web server
 	if(connect(m_fd, (const sockaddr*) &name, sizeof(struct sockaddr_in)) < 0)
 	{
-		Util::Log(LOG_CRIT, string("connect() failed: ") + strerror(errno));
+		Util::Log(LogError, string("connect() failed: ") + strerror(errno));
 		return false;
 	}
 
@@ -82,14 +85,20 @@ void Connection::Close()
 
 //-----------------------------------------------------------------------------
 
-bool Connection::Request(const string& request, vector<string>& result)
+bool Connection::Request(const string& request, vector<string>& result_head, vector<string>& result_body)
 {
-	result.clear();
+	result_head.clear();
+	result_body.clear();
+
 	string temp;
 	string req = request + " HTTP/1.1\n";
 	req += "Host: ";
 	req += m_hostname;
 	req += "\n\n";
+
+
+	Util::Log(LogDebug, "Request:" );
+	Util::Log(LogDebug, req, " ");
 
 	if(! Open())
 	{
@@ -98,13 +107,11 @@ bool Connection::Request(const string& request, vector<string>& result)
 
 	if(Write(req.c_str(), req.length()) < 0)
     {
-    	Util::Log(LOG_CRIT, "write(socket_fd) failed");
+    	Util::Log(LogError, "write(socket_fd) failed");
     	return false;
     }
 
-	int count = 5;
-
-	while(--count)
+	while(1)
 	{
 		const int READ_SIZE = 10000;
 		char buf[READ_SIZE + 1];
@@ -114,13 +121,12 @@ bool Connection::Request(const string& request, vector<string>& result)
 
 		if(n_read < 0)
 	    {
-	    	Util::Log(LOG_CRIT, "read(socket_fd) failed");
+	    	Util::Log(LogError, "read(socket_fd) failed");
 	    	return false;
 	    }
 		else if(n_read == 0)
 		{
-			sleep(1);
-//			break;
+			break;
 		}
 		else
 		{
@@ -133,16 +139,45 @@ bool Connection::Request(const string& request, vector<string>& result)
 
 	stringstream ss(temp);
 	std::string line;
+
+	// get head
+
+	Util::Log(LogDebug, "Response head:");
+
 	while(getline(ss, line))
 	{
-		if(line.length() > 1 && (line[line.length() - 1] == '\n' || line[line.length() - 1] == '\r'))
+		if(line[line.length() - 1] == '\n' || line[line.length() - 1] == '\r')
 		{
-			line.erase(line.length() - 1);
+			line.erase(line.length() - 1);	// strip CR / LF
 		}
-		result.push_back(line);
+
+		if(line.length() == 0)
+		{
+			break;	// empty line, body follows
+		}
+
+		result_head.push_back(line);
+
+		Util::Log(LogDebug, line, " ");
 	}
 
-	return result.size() > 0;
+	// get body
+
+	Util::Log(LogDebug, "Response body:");
+
+	while(getline(ss, line))
+	{
+		if(line[line.length() - 1] == '\n' || line[line.length() - 1] == '\r')
+		{
+			line.erase(line.length() - 1);	// strip CR / LF
+		}
+
+		result_body.push_back(line);
+
+		Util::Log(LogDebug, line, " ");
+	}
+
+	return result_head.size() > 0;
 }
 
 //-----------------------------------------------------------------------------

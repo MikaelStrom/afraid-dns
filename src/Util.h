@@ -8,7 +8,6 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
-#include <syslog.h>
 #include <string>
 #include <vector>
 
@@ -16,10 +15,13 @@ using namespace std;
 
 //-----------------------------------------------------------------------------
 
+enum LogLevel { LogNothing = 0, LogError = 1, LogInfo = 2, LogDebug = 3 };
+
 class Util
 {
 public:
-	static void Log(int pri, string msg, bool terminate = false);
+
+	static void Log(LogLevel level, string msg, string indent = "", bool terminate = false);
 
 	static bool ExtractIp(const string src, string& dest);
 

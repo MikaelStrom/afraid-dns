@@ -21,7 +21,7 @@ public:
 	Connection(const string hostname);
 	virtual ~Connection();
 
-	bool Request(const string& request, vector<string>& result);
+	bool Request(const string& request, vector<string>& result_head, vector<string>& result_body);
 
 private:
 	bool Open();

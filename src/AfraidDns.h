@@ -18,16 +18,17 @@ using namespace std;
 class AfraidDns
 {
 public:
-	AfraidDns(const string username, const string password, const string hostname, const string ip_host, const string ip_skip);
+	AfraidDns(const string hostname, const string ip_host, const string ip_skip);
 	virtual ~AfraidDns();
 
-	bool GetApiKeys();
+	bool CalcSHA1(const string s);	// do sthis first!
 
-	bool Update();
+	bool GetApiKeys();				// then this
+
+	bool Update();					// and repeat this until death
 
 private:
 	bool UpdateIp(string& response_ip, bool& changed);
-	void CalcSHA1(const string s);
 	bool CreateApiKey(const string hostname, const vector<string> text, string& api_key);
 
 	Connection m_afraid_host;

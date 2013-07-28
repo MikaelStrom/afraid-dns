@@ -12,10 +12,12 @@
 
 using namespace std;
 
+#define CFG_FILE	"/etc/afraid-dns.conf"
+
 class Config
 {
 public:
-	static bool ReadParam(const string& param, string& result, const string fname = "/etc/afraid-dns.conf");
+	static bool ReadParam(const string& param, string& result, const string fname = CFG_FILE);
 
 private:
 	static char *SkipWs(char *s);

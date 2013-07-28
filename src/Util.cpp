@@ -15,7 +15,7 @@
 
 //-----------------------------------------------------------------------------
 
-void Util::Log(LogLevel level, string msg, string indent, bool terminate)
+void Util::Log(LogLevel level, string msg, string indent)
 {
 	static int log_level = -1;
 
@@ -43,11 +43,6 @@ void Util::Log(LogLevel level, string msg, string indent, bool terminate)
 		}
 	}
 
-	if(terminate)
-	{
-		msg += ", terminating.";
-	}
-
 	if(level <= log_level)
 	{
 		int sys_level;
@@ -73,11 +68,6 @@ void Util::Log(LogLevel level, string msg, string indent, bool terminate)
 				syslog(sys_level, "%s: %s%s", prefix, indent.c_str(), line.c_str());
 			}
 		}
-	}
-
-	if(terminate)
-	{
-		exit(1);
 	}
 }
 

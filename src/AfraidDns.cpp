@@ -21,12 +21,11 @@
 
 //-----------------------------------------------------------------------------
 
-AfraidDns::AfraidDns(const string username, const string password, const string hostname, const string ip_host, const string ip_skip)
+AfraidDns::AfraidDns(const string hostname, const string ip_host, const string ip_skip)
 :	m_afraid_host(HOSTNAME),
 	m_dns_host(hostname),
 	m_get_ip(ip_host, ip_skip)
 {
-	CalcSHA1(username + "|" + password);
 	m_last_ip = "<unknown>";
 }
 
@@ -38,24 +37,27 @@ AfraidDns::~AfraidDns()
 
 //-----------------------------------------------------------------------------
 
-void AfraidDns::CalcSHA1(const string s)
+bool AfraidDns::CalcSHA1(const string s)
 {
     SHA_CTX context;
 	unsigned char out[SHA_DIGEST_LENGTH + 1];
 
     if(! SHA1_Init(&context))
     {
-    	Util::Log(LogError, "SHA1_Init() failed", "", true);
+    	Util::Log(LogError, "SHA1_Init() failed");
+    	return false;
     }
 
     if(! SHA1_Update(&context, (unsigned char*)s.c_str(), s.length()))
     {
-    	Util::Log(LogError, "SHA1_Update() failed", "", true);
+    	Util::Log(LogError, "SHA1_Update() failed");
+    	return false;
     }
 
     if(! SHA1_Final(out, &context))
     {
-    	Util::Log(LogError, "SHA1_Final() failed", "", true);
+    	Util::Log(LogError, "SHA1_Final() failed");
+    	return false;
     }
 
     for(int i = 0; i < SHA_DIGEST_LENGTH; i++)
@@ -64,14 +66,16 @@ void AfraidDns::CalcSHA1(const string s)
 		sprintf(buf, "%02x", out[i]);
 		m_sha_digest += buf;
 	}
+    return true;
 }
 
 //-----------------------------------------------------------------------------
 
 bool AfraidDns::CreateApiKey(const string hostname, const vector<string> text, string& api_key)
 {
-	api_key.clear();
 	string key;
+
+	api_key.clear();
 
 	// find right entry
 
@@ -91,7 +95,8 @@ bool AfraidDns::CreateApiKey(const string hostname, const vector<string> text, s
 
 	if(key.length() == 0)
 	{
-    	Util::Log(LogError, "No api key found matching '" + hostname + "'", "", true);
+    	Util::Log(LogError, "No api key found matching '" + hostname + "'");
+    	return false;
 	}
 
 	// String has format: "http://freedns.afraid.org/dynamic/update.php?UnlDelkwbkRBd2RyUHhiS2R1TFY6OTY4NTI3Mg=="
@@ -102,7 +107,8 @@ bool AfraidDns::CreateApiKey(const string hostname, const vector<string> text, s
 		size_t start = key.find("/dynamic/update.php?");
 		if (start == string::npos)
 		{
-	    	Util::Log(LogError, "Failed to parse api key. Key = '" + key + "'", "", true);
+	    	Util::Log(LogError, "Failed to parse api key. Key = '" + key + "'");
+	    	return false;
 		}
 
 		api_key = key.substr(start);

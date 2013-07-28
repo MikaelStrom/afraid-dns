@@ -21,7 +21,7 @@ class Util
 {
 public:
 
-	static void Log(LogLevel level, string msg, string indent = "", bool terminate = false);
+	static void Log(LogLevel level, string msg, string indent = "");
 
 	static bool ExtractIp(const string src, string& dest);
 

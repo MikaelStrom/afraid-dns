@@ -15,6 +15,7 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <time.h>
 
 #include "Util.h"
 #include "AfraidDns.h"
@@ -24,7 +25,8 @@ using namespace std;
 
 //-----------------------------------------------------------------------------
 
-#define PID_FILE	"/var/run/afraid-dns.pid"
+#define PID_FILE		"/var/run/afraid-dns.pid"
+#define RETRY_SECONDS	60
 
 int running = 1;
 int lock_fd = -1;
@@ -41,6 +43,7 @@ void signal_handler(int sig)
 	case SIGINT:
 	case SIGTERM:
 		running = 0;
+		Util::Log(LogInfo, "Received sginal SIGINT/SIGTERM, terminating.");
 		break;
 	}
 }
@@ -97,6 +100,11 @@ void daemonize()
 	chdir("/");
 
 	// drop root privs (to user daemon), if runnning as root
+
+// NOTE: To lazy to fix this; requires some extra work as the pid file can't be
+//		 deleted if created in /var/run/ as root. One way is to create /var/run/afraid/
+//		 with permissions that allow user daemon to delete it.
+//
 //	if(getuid() == 0)
 //	{
 //	    if(setgid(2) != 0)
@@ -114,13 +122,13 @@ void daemonize()
 
 	if(lock_fd < 0)
 	{
-		Util::Log(LogError, "open(PID_FILE) failed: " + string(strerror(errno)) + ". Probably another instance is already running. Exiting.");
+		Util::Log(LogError, "open(PID_FILE) failed: " + string(strerror(errno)) + ". Probably another instance is already running, terminating.");
 		exit(1); 		// open failed, we're a duplicate
 	}
 
 	if(lockf(lock_fd, F_TLOCK, 0) < 0)
 	{
-		Util::Log(LogError, "lockf(lock_fd) failed: " + string(strerror(errno)) + ". Exiting.");
+		Util::Log(LogError, "lockf(lock_fd) failed: " + string(strerror(errno)) + ", terminating.");
 		exit(1); 		// lock failed - no idea what this means...
 	}
 
@@ -144,18 +152,20 @@ void usage()
 
 int main(int argc, char *argv[])
 {
+	bool daemon = true;
 	string username;
 	string password;
 	string hostname;
 	string ip_host;
 	string ip_host_skip;
-	int daemon = 1;
+	int update_interval;
+	time_t next_update = 0;
 
 	for(int i = 1; i < argc; ++i)
 	{
 		if(strcmp(argv[i], "-f") == 0)
 		{
-			daemon = 0;
+			daemon = false;
 			printf("Running in foreground, log to stdout.\n");
 		}
 		else
@@ -176,59 +186,70 @@ int main(int argc, char *argv[])
 
 	if(! Config::ReadParam("username", username))
 	{
-		Util::Log(LogError, "Can't find username in config, exiting");
+		Util::Log(LogError, "Can't find 'username' in config, terminating.");
 		exit(1);
 	}
 	if(! Config::ReadParam("password", password))
 	{
-		Util::Log(LogError, "Can't find password in config, exiting");
+		Util::Log(LogError, "Can't find 'password' in config, terminating.");
 		exit(1);
 	}
 	if(! Config::ReadParam("hostname", hostname))
 	{
-		Util::Log(LogError, "Can't find hostname from in, exiting");
+		Util::Log(LogError, "Can't find 'hostname' in config, terminating.");
 		exit(1);
 	}
-	if(! Config::ReadParam("ip_host", ip_host))
+	string iv_str;
+	if(! Config::ReadParam("interval", iv_str))
 	{
-		ip_host = "myip.dnsomatic.com";
+		Util::Log(LogError, "Can't find 'interval' in config, defaulting to 5 minutes.");
+		update_interval = 5;
 	}
 	else
 	{
-		Config::ReadParam("ip_host_skip", ip_host_skip);
+		update_interval = atoi(iv_str.c_str());
+		if(update_interval < 5)
+		{
+			Util::Log(LogError, "Invalid 'interval' value in config, defaulting to 5 minutes.");
+			update_interval = 5;
+		}
 	}
-
-	if(daemon)
-	{
-		daemonize();
-	}
+	update_interval *= 60;	// minutes -> seconds
 
 	AfraidDns afraidDns(hostname, ip_host, ip_host_skip);
 
 	if(! afraidDns.CalcSHA1(username + "|" + password))
 	{
 		Util::Log(LogError, "Internal error, can't calc SHA1, terminating");
+		exit(1);
 	}
-	else
+
+	if(daemon)
 	{
-		running = 1;
+		daemonize();
+		Util::Log(LogInfo, "Daemon started.");
+	}
 
-		while(running && ! afraidDns.GetApiKeys())
-		{
-			sleep(60);
-		}
+	running = 1;
 
-		while(running)
+	while(running && ! afraidDns.GetApiKeys())
+	{
+		sleep(RETRY_SECONDS);
+	}
+
+	while(running)
+	{
+		time_t now = time(NULL);
+		if(now > next_update)
 		{
-			if(afraidDns.Update())
+			next_update = now + update_interval + ((rand() * 1.0 / RAND_MAX) * 60) - 30;	// spread updates
+
+			if(! afraidDns.Update())
 			{
-				sleep(60 * 5);	// success, wait 5 minutes
-			}
-			else
-			{
-				sleep(60);		// fail, wait 1 minute
+				next_update = now + RETRY_SECONDS;	// retry after RETRY_SECONDS
 			}
 		}
+		sleep(1);
 	}
 
 	closelog();
@@ -243,6 +264,8 @@ int main(int argc, char *argv[])
 			Util::Log(LogError, "unlink(PID_FILE) failed: " + string(strerror(errno)));
 		}
 	}
+
+	Util::Log(LogInfo, "Terminated.");
 
 	return 0;
 }

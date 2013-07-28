@@ -12,7 +12,6 @@
 #include <algorithm>
 
 #include "Util.h"
-#include "GetMyIP.h"
 #include "AfraidDns.h"
 
 //-----------------------------------------------------------------------------
@@ -23,16 +22,9 @@
 
 AfraidDns::AfraidDns(const string hostname, const string ip_host, const string ip_skip)
 :	m_afraid_host(HOSTNAME),
-	m_dns_host(hostname),
-	m_get_ip(ip_host, ip_skip)
+	m_dns_host(hostname)
 {
 	m_last_ip = "<unknown>";
-}
-
-//-----------------------------------------------------------------------------
-
-AfraidDns::~AfraidDns()
-{
 }
 
 //-----------------------------------------------------------------------------
@@ -66,6 +58,7 @@ bool AfraidDns::CalcSHA1(const string s)
 		sprintf(buf, "%02x", out[i]);
 		m_sha_digest += buf;
 	}
+
     return true;
 }
 
@@ -135,7 +128,7 @@ bool AfraidDns::GetApiKeys()
 		return false;
 	}
 
-	// find our key
+	// create our key
 
 	return CreateApiKey(m_dns_host, body, m_api_key);
 }
@@ -144,44 +137,24 @@ bool AfraidDns::GetApiKeys()
 
 bool AfraidDns::Update()
 {
-	string new_ip;
 	bool success;
 	string response_ip;
 	bool changed = false;
 
-	if(! m_get_ip.Get(new_ip))
-	{
-		Util::Log(LogError, "Unable to detect IP, forcing update");
-
-		success = UpdateIp(response_ip, changed);
-	}
-	else if(new_ip != m_last_ip)
-	{
-		Util::Log(LogInfo, "New IP detected, changing from " + m_last_ip + " to " + new_ip);
-
-		success = UpdateIp(response_ip, changed);
-
-		if(success)
-		{
-			m_last_ip = new_ip;
-		}
-	}
-	else
-	{
-		success = true;
-	}
+	success = UpdateIp(response_ip, changed);
 
 	if(! success)
 	{
-		Util::Log(LogError, "Unable to update" + string(HOSTNAME));
+		Util::Log(LogError, "Failed to update IP on " + string(HOSTNAME));
 	}
 	else if(changed)
 	{
-		Util::Log(LogInfo, "Successfully updated IP to " + response_ip);
+		Util::Log(LogInfo, "Successfully updated IP from " + m_last_ip + " to " + response_ip);
+		m_last_ip = response_ip;
 	}
 	else
 	{
-		Util::Log(LogInfo, "IP not changed (" + new_ip + ")");
+		Util::Log(LogInfo, "IP not changed (still " + response_ip + ")");
 	}
 
 	return success;

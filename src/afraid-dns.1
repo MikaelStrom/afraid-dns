@@ -74,7 +74,9 @@ syslog=2
 .I /etc/init.d/afraid-dns
 .RS
 .P
-Daemon init script.
+Daemon init script. May be used to start and stop the daemon:
+.P
+  /etc/init.d/afraid-dns [start|stop]
 
 .RE
 
@@ -82,15 +84,21 @@ Daemon init script.
 To follow the log as it's written do
 
 $ tail -F /var/log/syslog.log
+
 .SH BUGS
 There are most certainly bugs in this software. 
 
 Please submit bug reports, comments and suggestions to mikael@sesamiq.com.
 
-.SH AUTHOR
-Mikael Strom (mikael@sesamiq.com)
 .SH "SEE ALSO"
 tail (1)  
 .br
 http://freedns.afraid.org/
+
+.SH AUTHOR
+Mikael Strom (mikael@sesamiq.com)
+
+.SH COPYRIGHT
+Copyright © 2013 Mikael Strom. License GPLv3+: GNU GPL version 3 or later http://gnu.org/licenses/gpl.html. This is free software: you are free to change and redistribute  it. There is NO WARRANTY, to the extent permitted by law.
+
 

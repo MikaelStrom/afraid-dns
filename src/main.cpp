@@ -1,9 +1,21 @@
 /*
- * main.cpp
+ * Copyright 2013 Mikael Ström
+ * This file is part of afraid-dns.
  *
- *  Created on: Jul 27, 2013
- *      Author: mike
+ * afraid-dns is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * afraid-dns is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with afraid-dns (COPYING).  If not, see <http://www.gnu.org/licenses/>.
  */
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -102,9 +114,9 @@ void daemonize()
 		Util::Log(LogError, "chdir('/'): " + string(strerror(errno)));
 	}
 
-	// drop root privs (to user daemon), if runnning as root
+	// drop root privs (to user daemon)
 
-// NOTE: To lazy to fix this; requires some extra work as the pid file can't be
+// TODO: To lazy to fix this; requires some extra work as the pid file can't be
 //		 deleted if created in /var/run/ as root. One way is to create /var/run/afraid/
 //		 with permissions that allow user daemon to delete it.
 //

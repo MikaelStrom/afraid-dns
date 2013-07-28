@@ -97,7 +97,10 @@ void daemonize()
 	}
 
 	// set sensible working directory
-	chdir("/");
+	if(chdir("/") != 0)
+	{
+		Util::Log(LogError, "chdir('/'): " + string(strerror(errno)));
+	}
 
 	// drop root privs (to user daemon), if runnning as root
 
@@ -136,7 +139,10 @@ void daemonize()
 
 	char str[32];
 	sprintf(str, "%d\n", getpid());
-	write(lock_fd, str, strlen(str));
+	if(write(lock_fd, str, strlen(str)) < 1)
+	{
+		Util::Log(LogError, "write(lock_fd) failed: " + string(strerror(errno)));
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -155,7 +161,7 @@ int main(int argc, char *argv[])
 	bool daemon = true;
 	string username;
 	string password;
-	string hostname;
+	string domain;
 	string ip_host;
 	string ip_host_skip;
 	int update_interval;
@@ -194,9 +200,9 @@ int main(int argc, char *argv[])
 		Util::Log(LogError, "Can't find 'password' in config, terminating.");
 		exit(1);
 	}
-	if(! Config::ReadParam("hostname", hostname))
+	if(! Config::ReadParam("domain", domain))
 	{
-		Util::Log(LogError, "Can't find 'hostname' in config, terminating.");
+		Util::Log(LogError, "Can't find 'domain' in config, terminating.");
 		exit(1);
 	}
 	string iv_str;
@@ -216,7 +222,7 @@ int main(int argc, char *argv[])
 	}
 	update_interval *= 60;	// minutes -> seconds
 
-	AfraidDns afraidDns(hostname, ip_host, ip_host_skip);
+	AfraidDns afraidDns(domain, ip_host, ip_host_skip);
 
 	if(! afraidDns.CalcSHA1(username + "|" + password))
 	{

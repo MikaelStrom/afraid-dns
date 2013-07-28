@@ -45,7 +45,7 @@ void Util::Log(LogLevel level, string msg, string indent)
 
 	if(level <= log_level)
 	{
-		int sys_level;
+		int sys_level = -1;
 		const char* prefix;
 
 		switch(level)

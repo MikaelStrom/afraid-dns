@@ -1,0 +1,96 @@
+.TH afraid-dns 1 "July 29, 2012" "Version 1.0" "USER COMMANDS"
+.SH NAME
+afraid-dns \- Update daemon for http://freedns.afraid.org/
+.SH SYNOPSIS
+.B afraid-dns
+[\-f]
+.SH DESCRIPTION
+afraid-dns is a daemon that updates your dynamic IP.
+
+You must update the configuration file to make the daemon work properly as outlined below.
+
+The daemon starts automatically after boot. However, you may start the dameon manually with
+.P
+  $ sudo service afraid-dns start
+.P
+and stop the daemon with 
+.P
+  $ sudo service afraid-dns stop
+
+.SH OPTIONS
+.TP
+.B \-f
+runs afraid-dns in the foreground, logging to stdout. Verbosity of the log is controlled via the configuration file, see below.
+.SH EXIT STATUS
+afraid-dns returns non-zero exist status in case of failure to start.
+.SH FILES
+.I /etc/afraid-dns.conf
+.RS
+.P
+Configuration file.
+
+Please note that the password is stored in plain text, so make sure the file is owned by root and has mode 0600 (read and write only for owner).
+
+The parameter format is <key>=<value>. Comment line starts with '#'.
+
+The following parameters are defined:
+
+.I username:
+Your username, the same as you use to log into freedns.afraid.org.
+
+.I password: 
+Your password, the same as you use to log in to freedns.afraid.org.
+
+.I domain:
+The domain that you have registered at freedns.afraid.org. Note that you can have more than one domain name registered, but this daemon can only update one.
+
+.I interval:
+Update interval in minutes. Minimum is 5 minutes. Please note that afraid-dns randomizes the time for updates to distribute the load on the server, hence you will see random update times. 
+
+.I syslog:
+Set logging level, which is directed to /var/log/syslog:
+
+  0 = disable logging
+  1 = log only errors 
+  2 = log information (default) 
+  3 = verbose logging for debugging 
+
+.B Example configuration:
+.P
+# Comment line
+.br
+username=mike
+.br
+password=secret
+.br
+domain=mydomain.linuxd.net
+.br
+interval=5
+.br
+syslog=2 
+ 
+.RE
+
+.I /etc/init.d/afraid-dns
+.RS
+.P
+Daemon init script.
+
+.RE
+
+.SH NOTES
+To follow the log as it's written do
+
+$ tail -F /var/log/syslog.log
+.SH BUGS
+There are most certainly bugs in this software. 
+
+Please submit bug reports, comments and suggestions to mikael@sesamiq.com.
+
+.SH AUTHOR
+Mikael Strom (mikael@sesamiq.com)
+.SH "SEE ALSO"
+tail (1)  
+.br
+http://freedns.afraid.org/
+

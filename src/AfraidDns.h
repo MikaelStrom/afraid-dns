@@ -17,7 +17,7 @@ using namespace std;
 class AfraidDns
 {
 public:
-	AfraidDns(const string hostname, const string ip_host, const string ip_skip);
+	AfraidDns(const string domain, const string ip_host, const string ip_skip);
 
 	bool CalcSHA1(const string s);	// do sthis first, format "username|password"
 
@@ -31,7 +31,7 @@ private:
 
 	Connection m_afraid_host;
 	string m_sha_digest;
-	string m_dns_host;
+	string m_domain;
 	string m_api_key;
 	string m_last_ip;
 };

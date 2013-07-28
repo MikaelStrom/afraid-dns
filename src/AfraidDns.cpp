@@ -20,9 +20,9 @@
 
 //-----------------------------------------------------------------------------
 
-AfraidDns::AfraidDns(const string hostname, const string ip_host, const string ip_skip)
+AfraidDns::AfraidDns(const string domain, const string ip_host, const string ip_skip)
 :	m_afraid_host(HOSTNAME),
-	m_dns_host(hostname)
+	m_domain(domain)
 {
 	m_last_ip = "<unknown>";
 }
@@ -130,7 +130,7 @@ bool AfraidDns::GetApiKeys()
 
 	// create our key
 
-	return CreateApiKey(m_dns_host, body, m_api_key);
+	return CreateApiKey(m_domain, body, m_api_key);
 }
 
 //-----------------------------------------------------------------------------

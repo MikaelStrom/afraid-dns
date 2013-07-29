@@ -24,7 +24,7 @@ clean:
 
 install:
 	sudo install -s -o root -g root -m 0755 afraid-dns /usr/sbin
-	sudo install -o root -g root -m 0600 afraid-dns.conf /etc
+	if ! test -f /etc/afraid-dns.conf; then sudo install -o root -g root -m 0600 afraid-dns.conf /etc; fi
 	sudo install -o root -g root -m 0755 init.d /etc/init.d/afraid-dns
 	sudo install -o root -g root -m 0644 afraid-dns.1 /usr/share/man/man1/
 	sudo gzip -q /usr/share/man/man1/afraid-dns.1

@@ -165,7 +165,7 @@ bool AfraidDns::Update()
 	}
 	else
 	{
-		Util::Log(LogInfo, "IP not changed (still " + response_ip + ")");
+		Util::Log(LogDebug, "IP not changed (still " + response_ip + ")");
 	}
 
 	return success;

@@ -87,7 +87,7 @@ void Util::Log(LogLevel level, string msg, string indent)
 
 void Util::OpenLogFile(const string fname)
 {
-	m_log_fp = fopen(fname.c_str(), "w");
+	m_log_fp = fopen(fname.c_str(), "a");
 
 	if(m_log_fp == NULL)
 	{

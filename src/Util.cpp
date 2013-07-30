@@ -19,6 +19,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include <syslog.h>
 #include <sstream>
 
@@ -27,34 +29,14 @@
 
 //-----------------------------------------------------------------------------
 
+FILE* Util::m_log_fp = NULL;
+bool Util::m_log_stdout = false;
+int Util::log_level = LogError;
+
+//-----------------------------------------------------------------------------
+
 void Util::Log(LogLevel level, string msg, string indent)
 {
-	static int log_level = -1;
-
-	// read config file only once
-
-	if(log_level == -1)
-	{
-		string s;
-		if(Config::ReadParam("syslog", s))
-		{
-			int n = atoi(s.c_str());
-
-			if(n > LogDebug)
-			{
-				log_level = LogDebug;
-			}
-			else if(n < LogNothing)
-			{
-				log_level = LogNothing;
-			}
-			else
-			{
-				log_level = n;
-			}
-		}
-	}
-
 	if(level <= log_level)
 	{
 		int sys_level = -1;
@@ -73,14 +55,45 @@ void Util::Log(LogLevel level, string msg, string indent)
 			stringstream ss(msg);
 			std::string line;
 
-			// get head
-
 			while(getline(ss, line))
 			{
-				syslog(sys_level, "%s: %s%s", prefix, indent.c_str(), line.c_str());
+				if(m_log_fp != NULL)
+				{
+					char buf[128];
+
+					time_t now = time(NULL);
+					struct tm *ts = localtime(&now);
+
+					strftime(buf, sizeof(buf), "%x %X", ts);	// ISO style date and time
+
+					fprintf(m_log_fp, "%s %s: %s%s\n", buf, prefix, indent.c_str(), line.c_str());
+					fflush(m_log_fp);
+
+					if(m_log_stdout)
+					{
+						printf("%s %s: %s%s\n", buf, prefix, indent.c_str(), line.c_str());
+					}
+				}
+				else
+				{
+					syslog(sys_level, "%s: %s%s", prefix, indent.c_str(), line.c_str());
+				}
 			}
 		}
 	}
+}
+
+//-----------------------------------------------------------------------------
+
+void Util::OpenLogFile(const string fname)
+{
+	m_log_fp = fopen(fname.c_str(), "w");
+
+	if(m_log_fp == NULL)
+	{
+		Log(LogError, "Failed to open log file" + fname + ": " + strerror(errno));
+	}
+
 }
 
 //-----------------------------------------------------------------------------

@@ -29,7 +29,7 @@ using namespace std;
 class AfraidDns
 {
 public:
-	AfraidDns(const string domain, const string ip_host, const string ip_skip);
+	AfraidDns(const string domain);
 
 	bool CalcSHA1(const string s);	// do sthis first, format "username|password"
 

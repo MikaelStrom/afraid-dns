@@ -31,7 +31,7 @@
 
 //-----------------------------------------------------------------------------
 
-AfraidDns::AfraidDns(const string domain, const string ip_host, const string ip_skip)
+AfraidDns::AfraidDns(const string domain)
 :	m_afraid_host(HOSTNAME),
 	m_domain(domain)
 {

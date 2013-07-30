@@ -1,4 +1,4 @@
-.TH afraid-dns 1 "July 29, 2012" "Version 1.0" "USER COMMANDS"
+.TH afraid-dns 1 "July 30, 2013" "Version 1.1" "USER COMMANDS"
 .SH NAME
 afraid-dns \- Update daemon for http://freedns.afraid.org/
 .SH SYNOPSIS
@@ -55,6 +55,11 @@ Set logging level, which is directed to /var/log/syslog:
   2 = log information (default) 
   3 = verbose logging for debugging 
 
+.I logfile:
+Redirect logging to a separate file, for instance /var/log/afraid-dns.log. Can be useful to keep longer periods of logging when fighting with your ISP regarding discounts. 
+
+Note that you need to setup log rotation yorself if required. 
+
 .B Example configuration:
 .P
 # Comment line
@@ -68,6 +73,8 @@ domain=mydomain.linuxd.net
 interval=5
 .br
 syslog=2 
+.br
+logfile=/var/log/afraid-dns.log
  
 .RE
 

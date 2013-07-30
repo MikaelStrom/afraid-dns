@@ -33,10 +33,18 @@ class Util
 public:
 
 	static void Log(LogLevel level, string msg, string indent = "");
+	static void OpenLogFile(const string fname);
+	static void EnableStdoutLog()					{ m_log_stdout = true; }
+	static void SetLogLevel(LogLevel level)			{ log_level = level; }
 
 	static bool ExtractIp(const string src, string& dest);
 
 	static vector<string> Tokenize(const string& text, const char delim);
+
+private:
+	static FILE* m_log_fp;
+	static bool m_log_stdout;
+	static int log_level;
 };
 
 //-----------------------------------------------------------------------------

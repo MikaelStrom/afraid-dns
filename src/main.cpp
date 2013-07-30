@@ -174,8 +174,6 @@ int main(int argc, char *argv[])
 	string username;
 	string password;
 	string domain;
-	string ip_host;
-	string ip_host_skip;
 	int update_interval;
 	time_t next_update = 0;
 
@@ -185,6 +183,7 @@ int main(int argc, char *argv[])
 		{
 			daemon = false;
 			printf("Running in foreground, log to stdout.\n");
+			Util::EnableStdoutLog();
 		}
 		else
 		{
@@ -202,25 +201,55 @@ int main(int argc, char *argv[])
 	signal(SIGHUP, signal_handler); 	// catch hangup signal (reload config - not implemented yet)
 	signal(SIGTERM, signal_handler); 	// catch kill signal
 
+	// read config file
+
+	string logfile;
+	if(Config::ReadParam("logfile", logfile))
+	{
+		Util::OpenLogFile(logfile);
+	}
+
+	string syslog;
+	if(Config::ReadParam("syslog", syslog))
+	{
+		LogLevel n = (LogLevel) atoi(syslog.c_str());
+
+		if(n > LogDebug)
+		{
+			Util::SetLogLevel(LogDebug);
+		}
+		else if(n < LogNothing)
+		{
+			Util::SetLogLevel(LogNothing);
+		}
+		else
+		{
+			Util::SetLogLevel(n);
+		}
+	}
+
 	if(! Config::ReadParam("username", username))
 	{
 		Util::Log(LogError, "Can't find 'username' in config, terminating.");
 		exit(1);
 	}
+
 	if(! Config::ReadParam("password", password))
 	{
 		Util::Log(LogError, "Can't find 'password' in config, terminating.");
 		exit(1);
 	}
+
 	if(! Config::ReadParam("domain", domain))
 	{
 		Util::Log(LogError, "Can't find 'domain' in config, terminating.");
 		exit(1);
 	}
+
 	string iv_str;
 	if(! Config::ReadParam("interval", iv_str))
 	{
-		Util::Log(LogError, "Can't find 'interval' in config, defaulting to 5 minutes.");
+		Util::Log(LogInfo, "Can't find 'interval' in config, defaulting to 5 minutes.");
 		update_interval = 5;
 	}
 	else
@@ -234,7 +263,9 @@ int main(int argc, char *argv[])
 	}
 	update_interval *= 60;	// minutes -> seconds
 
-	AfraidDns afraidDns(domain, ip_host, ip_host_skip);
+	// Set up
+
+	AfraidDns afraidDns(domain);
 
 	if(! afraidDns.CalcSHA1(username + "|" + password))
 	{
@@ -242,18 +273,22 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	// fork off if not in foreground mode
+
 	if(daemon)
 	{
 		daemonize();
 		Util::Log(LogInfo, "Daemon started.");
 	}
 
-	running = 1;
+	// first get api keys
 
 	while(running && ! afraidDns.GetApiKeys())
 	{
 		sleep(RETRY_SECONDS);
 	}
+
+	// then update until IP terminated
 
 	while(running)
 	{
@@ -270,7 +305,6 @@ int main(int argc, char *argv[])
 		sleep(1);
 	}
 
-	closelog();
 
 	// close pid file and delete it
 
@@ -284,6 +318,8 @@ int main(int argc, char *argv[])
 	}
 
 	Util::Log(LogInfo, "Terminated.");
+
+	closelog();
 
 	return 0;
 }

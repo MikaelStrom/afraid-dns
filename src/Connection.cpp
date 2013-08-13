@@ -133,7 +133,6 @@ bool Connection::Request(const string& request, vector<string>& result_head, vec
 
 		if(n_read < 0)
 	    {
-	    	Util::Log(LogError, "read(socket_fd) failed");
 	    	return false;
 	    }
 		else if(n_read == 0)
@@ -203,7 +202,35 @@ ssize_t Connection::Write(const char* buf, size_t size)
 
 ssize_t Connection::Read(char* buf, size_t size)
 {
-	return read(m_fd, buf, size);
+	ssize_t result =  0;
+
+	// set receive time out
+	struct timeval tv;
+	tv.tv_sec = 5;		// time out after 30 seconds
+	tv.tv_usec = 0;
+
+	fd_set fds;
+	FD_ZERO(&fds);
+	FD_SET(m_fd, &fds);
+
+	// Wait until timeout or data received.
+	int n = select(m_fd + 1, &fds, NULL, NULL, &tv);
+	if(n == 0)
+	{
+		result = 0;
+	}
+	else if(n < 0)
+	{
+		Util::Log(LogError, "Connection::Read: select() failed: " + string(strerror(errno)));
+		result = -1;
+	}
+	else
+	{
+		// read from the socket
+		result = recvfrom(m_fd, buf, size, 0, NULL, NULL);
+	}
+
+	return result;
 }
 
 //-----------------------------------------------------------------------------
